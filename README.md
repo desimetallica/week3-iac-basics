@@ -11,9 +11,15 @@ Modelling a security requirements in a reproducible way an taking into account:
 The best way to consider this is to operate with Terraform in a reproducible way. The S3 buckets with private access only need to satisfy those:
 
 1. SSE-S3 instead of SSE-KMS: no key management overhead, data are protected at rest, reduced complexity, key maangement is fully handled by AWS at cost of less control on fine tuning of key usage.
-2. Versioning disabled: to mantain predicatable usage, and lower storage costs, reduce security exposure, simplier managing. 
+2. Versioning disabled: to mantain predicatable usage, and lower storage costs, reduce security exposure, and mantain a simple management. 
 3. Deny non-TLS requests: data are protected in transit, server side enforcement, no additional cost.
 4. Block Public Access: protection agains accidental exposure, enforcing private access only. Does not cover internal and private access authorization, and therefore data exfiltration by authorized identities. 
+
+In the end of the day this setup will:
+
+1. configure a secure encryption at rest and in transit.
+2. mantain low fingerprint on S3 bucket with no version at the same time with a predictable way of deploy (no default configurations).
+3. mantain private access only and leave access authorization free of use in private scope.
 
 # Terraform resource used
 
@@ -23,6 +29,22 @@ The best way to consider this is to operate with Terraform in a reproducible way
 - `aws_s3_bucket_server_side_encryption_configuration`: Enables SSE-S3 encryption
 - `aws_s3_bucket_public_access_block`: Blocks all public access
 - `aws_s3_bucket_policy`: Denies non-TLS requests
+
+Note: When Amazon S3 evaluates the PublicAccessBlock configuration for a bucket or an object, it checks the PublicAccessBlock configuration for both the bucket (or the bucket that contains the object) and the bucket owner's account. Account-level settings automatically inherit from organization-level policies when present. If the PublicAccessBlock settings are different between the bucket and the account, Amazon S3 uses the most restrictive combination of the bucket-level and account-level settings. [Source](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutPublicAccessBlock.html)
+
+# Usage
+
+1. Edit `defaults.tfvars` to set your region and S3 bucket name.
+2. Run:
+   ```sh
+   terraform init
+   terraform apply -var-file=defaults.tfvars
+   ```
+3. Cleanup:
+   ```sh
+   terraform destroy -var-file=defaults.tfvars
+   ```
+
 
 # Verification
 
@@ -47,7 +69,8 @@ https://repost.aws/knowledge-center/s3-accidentally-denied-access
 When a situation becomes irreversible, the impact is severe.
 This requires a deep understanding of control mechanisms.
 
-- Security has real operational impact, and mistakes cannot be hidden — they accumulate and compound.
+- Security has real operational impact; mistakes should not be hidden, but turned into a real value.
 
 - It is critical to understand where the benefits of a security policy or rule end and where operational issues begin.
 Every rule or policy must be studied in terms of its impact on development workflows and platform operations.
+
