@@ -5,7 +5,7 @@
 # Run this script after 'terraform apply' in the terraform copy/ directory
 
 # Configuration - update these if your tfvars change
-BUCKET_NAME="desimetallica-workload-bucket"
+BUCKET_NAME=$(cd terraform && terraform output -raw s3_bucket_name)
 REGION="eu-south-1"
 TEST_OBJECT="index.html"
 
@@ -17,9 +17,9 @@ echo ""
 # Function to check if command succeeded
 check_result() {
     if [ $1 -eq 0 ]; then
-        echo "PASS: $2"
+        echo -e "\033[32mPASS\033[0m: $2"
     else
-        echo "FAIL: $2"
+        echo -e "\033[31mFAIL\033[0m: $2"
     fi
 }
 
@@ -41,7 +41,7 @@ aws s3api head-object --bucket "$BUCKET_NAME" --key "$TEST_OBJECT" --region "$RE
 if [ $? -ne 0 ]; then
     echo "Creating test object..."
     # aws s3 cp config/index.html s3://desimetallica-workload-bucket/index.html 
-    aws s3 cp "/config/$TEST_OBJECT" "s3://$BUCKET_NAME/$TEST_OBJECT" --region "$REGION"
+    aws s3 cp "./config/$TEST_OBJECT" "s3://$BUCKET_NAME/$TEST_OBJECT" --region "$REGION"
     check_result $? "Test object created"
 else
     echo "Test object already exists"

@@ -14,6 +14,8 @@ The best way to consider this is to operate with Terraform in a reproducible way
 2. Versioning disabled: to mantain predicatable usage, and lower storage costs, reduce security exposure, and mantain a simple management. 
 3. Deny non-TLS requests: data are protected in transit, server side enforcement, no additional cost.
 4. Block Public Access: protection agains accidental exposure, enforcing private access only. Does not cover internal and private access authorization, and therefore data exfiltration by authorized identities. 
+5. Creating bucket names that aren't predictable: If you delete a bucket, be aware that another AWS account in the same partition can use the same bucket name for a new bucket and can therefore potentially receive requests that are intended for the deleted bucket. 
+6. Policy controlled access: least privilige offered by strict account controlling thanks to the condition on DenyAllExceptCurrentUser policy of the bucket.
 
 In the end of the day this setup will:
 

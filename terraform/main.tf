@@ -2,16 +2,23 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "random" {}
+
 # Get current account number
 data "aws_caller_identity" "current" {}
+
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
 
 #
 #
 # S3 Buckets
 #
 #
+# non predictable S3 bucket name to avoid conflicts
 resource "aws_s3_bucket" "worload_bucket" {
-  bucket = var.s3_bucket_name
+  bucket        = "${var.s3_bucket_name}-${random_id.bucket_suffix.hex}"
   force_destroy = true
 
   lifecycle {
@@ -22,7 +29,7 @@ resource "aws_s3_bucket" "worload_bucket" {
 # disable S3 versioning to reduce storage costs and prevent unintended sensible data retention
 resource "aws_s3_bucket_versioning" "worload_bucket_versioning" {
   bucket = aws_s3_bucket.worload_bucket.id
-  
+
   versioning_configuration {
     status = "Suspended"
   }
@@ -30,26 +37,26 @@ resource "aws_s3_bucket_versioning" "worload_bucket_versioning" {
 
 resource "aws_s3_bucket_ownership_controls" "worload_bucket_ownership" {
   bucket = aws_s3_bucket.worload_bucket.id
-  
+
   rule {
-    object_ownership = "BucketOwnerPreferred"
+    object_ownership = "BucketOwnerEnforced"
   }
 }
 
 # Enable Server Side Encryption with AES256
 resource "aws_s3_bucket_server_side_encryption_configuration" "worload_bucket_sse" {
-    bucket = aws_s3_bucket.worload_bucket.id
+  bucket = aws_s3_bucket.worload_bucket.id
 
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
+  }
 }
 
 # add Block Puclic Access to S3 Bucket to protect against public access and future misconfiguration
 resource "aws_s3_bucket_public_access_block" "worload_bucket_public_access_block" {
-  bucket = aws_s3_bucket.worload_bucket.id
+  bucket                  = aws_s3_bucket.worload_bucket.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -60,7 +67,7 @@ resource "aws_s3_bucket_public_access_block" "worload_bucket_public_access_block
 
 # S3 Bucket policy deny non TLS requests, explicitly deny public access.
 resource "aws_s3_bucket_policy" "worload_bucket_policy" {
-  
+
   bucket = aws_s3_bucket.worload_bucket.id
 
   policy = jsonencode({
@@ -80,7 +87,26 @@ resource "aws_s3_bucket_policy" "worload_bucket_policy" {
             "aws:SecureTransport" = "false"
           }
         }
+      },
+      {
+        Sid    = "DenyAllExceptCurrentUser"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.worload_bucket.arn,
+          "${aws_s3_bucket.worload_bucket.arn}/*"
+        ]
+        Condition = {
+          ArnNotEquals = {
+            "aws:PrincipalArn" = data.aws_caller_identity.current.arn
+          }
+        }
       }
-    ]      
+    ]
   })
+}
+
+output "s3_bucket_name" {
+  value = aws_s3_bucket.worload_bucket.bucket
 }
