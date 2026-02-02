@@ -15,7 +15,7 @@ The best way to consider this is to operate with Terraform in a reproducible way
 3. Deny non-TLS requests: data are protected in transit, server side enforcement, no additional cost.
 4. Block Public Access: protection agains accidental exposure, enforcing private access only. Does not cover internal and private access authorization, and therefore data exfiltration by authorized identities. 
 5. Creating bucket names that aren't predictable: If you delete a bucket, be aware that another AWS account in the same partition can use the same bucket name for a new bucket and can therefore potentially receive requests that are intended for the deleted bucket. 
-6. Policy controlled access: least privilige offered by strict account controlling thanks to the condition on DenyAllExceptCurrentUser policy of the bucket.
+6. Policy controlled access: least privilege offered by strict account controlling thanks to the condition on DenyAllExceptCurrentUser policy of the bucket.
 
 In the end of the day this setup will:
 
@@ -65,7 +65,9 @@ It's important to verify S3 bucket security to ensure configurations like public
 - Careful usage of Deny with Principal: "*" to simulate “no public access” on S3.
 The only way to recover or delete the bucket is to modify the bucket policies using the root account.
 This typically requires opening a support ticket with AWS and having the relevant know-how:
-https://repost.aws/knowledge-center/s3-accidentally-denied-access
+https://repost.aws/knowledge-center/s3-accidentally-denied-access.
+
+- A good option to implement least privilege is to deny the access to a specific S3 resource and use then the `ArnNotEquals` in Policies condition statement. This ensure a proper access to the current resource you are consider in this case excluding the IAM user running Terraform script. To add other users you need to add another statement with specific user or role and the required actions.
 
 - Things can become irreversible. In defensive security, it is essential to understand what you are about to execute before running commands.
 When a situation becomes irreversible, the impact is severe.
